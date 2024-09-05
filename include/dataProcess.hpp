@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <memory>
 namespace JRLC
 {
     std::string read_file_contents(const std::string &file_name);
@@ -46,15 +47,5 @@ namespace JRLC
       
 } // namespace JRLC
 
-/* /var/log/HardWare */
-#define Log_HardWareState "HardWareState"
-/* /var/log/Kernel */
-#define Log_KernelState   "KernelState"
-/* /var/log/NetWork */
-#define Log_NetworkState  "NetworkState"
-/* /var/log/System */
-#define Log_SystemState   "SystemState"
-/* /var/log/User */
-#define Log_UserState     "UserState"
 
 #endif

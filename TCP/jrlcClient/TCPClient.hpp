@@ -1,6 +1,8 @@
 #ifndef TCPCLIENT_HPP
 #define TCPCLIENT_HPP
-#include "dataProcess.hpp"
+#include "../../include/dataProcess.hpp"
+#include "Message.hpp"
+#include <memory>
 #include <string>
 #include <iostream>
 #include <cstring>
@@ -15,23 +17,16 @@
 #include <fstream>
 
 class TCPClient {
-  struct Message {
-    int bodySize;
-    char type;
-    int jsonSize;
-    int payloadSize;
-};
 private:
   int m_clientSocket;
-
 public:
   TCPClient(const char *serverIP, int serverPort);
   ~TCPClient();
 
 public:
   int getSocket();
-  void sendMessage(std::string json_buf,std::string payload);
-  void receiveMessage(Message &msg);
+  void sendMessage(const std::shared_ptr<Message>& msg,std::string json_buf,std::string payload);
+  // void receiveMessage(Message* msg);
 
 public:
   void test();

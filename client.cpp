@@ -10,5 +10,10 @@ int main(int argc, char const *argv[])
   const char *ip = argv[1];
   int port = std::stoi(argv[2]);
   TCPClient client(ip, port);
+  while (1)
+  {
+    /* code */
+  }
+  
   return 0;
 }
