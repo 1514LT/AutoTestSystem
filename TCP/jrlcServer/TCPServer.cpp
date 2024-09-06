@@ -97,14 +97,14 @@ void TCPServer::echo(int cli_fd)
 
 
 }
-int main(int argc, char const *argv[])
-{
-    if(argc != 2)
-  {
-    perror("./jrlcServer port");
-    return -1;
-  }
+// int main(int argc, char const *argv[])
+// {
+//     if(argc != 2)
+//   {
+//     perror("./jrlcServer port");
+//     return -1;
+//   }
 
-  TCPServer tcp(8000);
-  return 0;
-}
+//   TCPServer tcp(8000);
+//   return 0;
+// }

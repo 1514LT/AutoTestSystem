@@ -202,6 +202,17 @@ std::string JRLC::getSavePath()
   file_path += "profile/";
   return file_path;
 }
+std::string JRLC::getLocalPath()
+{
+  std::string file_path = std::string(std::getenv("PWD"));
+  return file_path;
+}
+
+std::string JRLC::getHomePath()
+{
+  std::string file_path = std::string(std::getenv("HOME"));
+  return file_path;
+}
 /*获取毫秒时间*/
 long long JRLC::getCurrentTimeMillis()
 {

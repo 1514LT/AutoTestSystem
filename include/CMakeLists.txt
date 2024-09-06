@@ -27,3 +27,8 @@ install(TARGETS data_shared data_static
         ARCHIVE DESTINATION ${CMAKE_CURRENT_SOURCE_DIR}/../lib
 )
 
+# 安装配置文件
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/source/
+        DESTINATION /root/AutoTestSystem/source/)
+
+

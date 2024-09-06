@@ -38,6 +38,8 @@ namespace JRLC
     bool check_and_create_directory(const std::string& dir_path);
     std::string getUserPath();
     std::string getSavePath();
+    std::string getLocalPath();
+    std::string getHomePath();
     long long getCurrentTimeMillis(); // 获取当前毫秒时间
     std::string getFormattedTime(long long millis);
     long long getCurrentTimeMicro();
