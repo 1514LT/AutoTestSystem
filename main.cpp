@@ -4,8 +4,7 @@
 
 void InitServer()
 {
-  std::string configFile = JRLC::getLocalPath() + "/source/config.json";
-  // printf("configFile:%s\n",configFile.c_str());
+  std::string configFile ="/root/AutoTestSystem/source/config.json";
   Json::Value root_server = JRLC::StringToJson(JRLC::read_file_contents(configFile));
   int serverPort = root_server["localServerPort"].asInt();
   std::shared_ptr<TCPServer> server(new TCPServer(serverPort));
@@ -13,7 +12,7 @@ void InitServer()
 
 void InitClient()
 {
-  std::string configFile = JRLC::getLocalPath() + "/../source/config.json";
+  std::string configFile = "/root/AutoTestSystem/source/config.json";
   Json::Value root_server = JRLC::StringToJson(JRLC::read_file_contents(configFile));
   int serverPort = root_server["serverPort"].asInt();
   std::string serverIp = root_server["serverIp"].asString();
