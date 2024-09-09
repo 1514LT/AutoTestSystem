@@ -19,8 +19,19 @@
 
 class TCPClient {
 
+template <typename Function, typename... Args>
+void start(Function&& f, Args&&... args)
+{
+    std::thread(std::forward<Function>(f), std::forward<Args>(args)...).join();
+}
+
 enum MSG_TYPE{
-ERRO_MSG,
+TMP_MSG,
+CPU_MSG,
+HEARTBEAT_MSG,
+SEND_FILE_MSG = 4,
+DOWNLOAD_FILE_MSG = 5,
+TESTCASE_MSG = 10
 
 };
 private:
@@ -39,12 +50,15 @@ public:
   int getSocket();
   void sendMessage(const std::shared_ptr<Message>& msg,std::string json_buf,std::string payload);
   bool receiveMessage(std::string &arg_result,int &msgType);
-
+  bool receiveMessage(Json::Value &back);
+  std::shared_ptr<Message> InitMsg(char type,std::string json,std::string payload);
 public:
-  void test();
+  void test(Json::Value root); //执行测试任务
   void Init(); // 获取cpu信息
   void Heartbeat();
   void Run();
+  void SendFile(Json::Value root);
+  void RecvFile(Json::Value root);
 };
 
 #endif

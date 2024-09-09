@@ -36,6 +36,15 @@ TCPClient::TCPClient(const char *serverIP, int serverPort)
   Run();
 
 }
+std::shared_ptr<Message> TCPClient::InitMsg(char type,std::string json,std::string payload)
+{
+  int bodySize = 0;
+  int jsonSize = json.size();
+  int payloadSize = payload.size();
+  bodySize = jsonSize + payloadSize;
+  std::shared_ptr<Message> msg(new Message(bodySize,type,jsonSize,payloadSize));
+  return msg;
+}
 
 void TCPClient::Heartbeat()
 {
@@ -57,6 +66,9 @@ void TCPClient::Heartbeat()
   
 }
 
+
+
+
 void TCPClient::Run()
 {
   while (1)
@@ -66,23 +78,84 @@ void TCPClient::Run()
     int msg_type = -1;
     if(!receiveMessage(reseult,msg_type))
       break;
-
+    Json::Value root = JRLC::StringToJson(reseult);
     switch (msg_type)
     {
     case -1:
       std::cout << "erro msg_type" << std::endl;
       break;
-    
+    // case MSG_TYPE::SEND_FILE_MSG:
+    //   start(&TCPClient::SendFile,this,root);
+    //   break;
+    // case MSG_TYPE::DOWNLOAD_FILE_MSG:
+    //   start(&TCPClient::RecvFile,this,root);
+    //   break;
+    case MSG_TYPE::TESTCASE_MSG:
+      start(&TCPClient::test,this,root);
     default:
       break;
     }
-    Json::Value root = JRLC::StringToJson(reseult);
+    
 
     sleep(1);
   }
   printf("client close\n");
   
 }
+
+void TCPClient::test(Json::Value root)
+{
+  /* to do run test case*/
+  std::string msg = JRLC::JsonToString(root);
+  std::cout << "msg:" << msg << std::endl;
+  if(root["testTaskIds"].isNull())
+    return;
+  std::vector<long> TaskIds;
+  for(auto ids:root["testTaskIds"])
+  {
+    TaskIds.push_back(ids.asInt64());
+    printf("testTaskId:%ld\n",ids.asInt64());
+    Json::Value back;
+    back["testTaskRecordId"] = ids.asInt64();
+    std::string payload = "";
+    std::shared_ptr<Message> msg = InitMsg(5,JRLC::JsonToString(back),payload);
+    sendMessage(msg,JRLC::JsonToString(back),payload);
+    std::string strJson;
+    int msgType;
+    receiveMessage(strJson,msgType);
+    printf("---->strJson:%s\n",strJson.c_str());
+    back.clear();
+    back =  JRLC::StringToJson(strJson);
+    if(back["testCaseName"].isNull() || back["executionParameters"].isNull() || back["fileUrl"].isNull())
+    {
+      std::cerr << "erro recv" << std::endl;
+      return;
+    }
+    std::string cmd_curl_download = "curl -o " + back["testCaseName"].asString() + " " + back["fileUrl"].asString();
+    JRLC::getCmd(cmd_curl_download);
+
+    // 启动进程执行测试用例
+    
+  }
+
+  // up test reasult
+
+  // Json::Value testReasult;
+  // SendFile(testReasult);
+  // Json::Value back;
+  // receiveMessage(back);
+}
+
+void TCPClient::SendFile(Json::Value root)
+{
+
+}
+void TCPClient::RecvFile(Json::Value root)
+{
+
+}
+
+
 TCPClient::~TCPClient()
 {
 
@@ -128,6 +201,65 @@ void TCPClient::sendMessage(const std::shared_ptr<Message>& msg,std::string json
   memcpy(header, payload.c_str(), payload.size());
   send(getSocket(), buff, back_bodySize+13, 0);
 
+}
+
+bool TCPClient::receiveMessage(Json::Value &back)
+{
+int cli_fd = getSocket();
+  unsigned char date_size[4] = "";
+  void *ping = date_size;
+  if(recv(cli_fd, date_size, sizeof(date_size), 0)<=0)
+  {
+    perror("recv date_size\n");
+    return false;
+  }
+  printf("date_size:%d\n", ntohl(*(int*)ping));
+  char type[1] = "";
+  if(recv(cli_fd, type, sizeof(type), 0)<=0)
+  {
+    perror("recv type\n");
+    return false;
+  }
+  std::cout << "type:" << (int)type[0] << std::endl; 
+  char jsonSize[4] = "";
+  if(recv(cli_fd, jsonSize, sizeof(jsonSize), 0)<= 0)
+  {
+    perror("recv jsonSize\n");
+    return false;
+  }
+  printf("jsonSize:%d\n",ntohl(*(int*)jsonSize));
+  int jsonSizes = ntohl(*(int*)jsonSize);
+
+  char payloadSize[4] = "";
+  if(recv(cli_fd, payloadSize, sizeof(payloadSize), 0)<=0)
+  {
+    perror("recv payloadSize\n");
+    return false;
+  }
+  printf("payloadSize:%d\n",ntohl(*(int*)payloadSize));
+  int payloadSizes = ntohl(*(int*)payloadSize);
+
+  char json[jsonSizes] = "";
+  if(recv(cli_fd, json, jsonSizes, 0)<=0)
+  {
+    perror("recv jsonSizes\n");
+    return false;
+  }
+  printf("json:%s\n",json);
+  std::string result = json;
+  back = JRLC::StringToJson(result);
+  char payload[payloadSizes] = "";
+  if(payloadSizes > 0)
+  {
+    if(recv(cli_fd, payload, payloadSizes, 0)<=0)
+    {
+      perror("recv payload\n");
+      return false;
+    }
+    printf("payload:%s\n",payload);
+  }
+  
+  return true; 
 }
 
 bool TCPClient::receiveMessage(std::string &arg_result,int &msgType)
@@ -190,24 +322,6 @@ bool TCPClient::receiveMessage(std::string &arg_result,int &msgType)
   return true;
 }
 
-void TCPClient::test()
-{
-  Json::Value root;
-  root["MSG_Type"] = "KernelState";
-  root["MSG_Body"] = "cmd_create";
-  root["sessionName"] = "mysession";
-  root["output"] = "/tmp/root-lttng-traces/";
-  root["password"] = "111111";
-  int bodySize = 0;
-  char type = 1;
-  int jsonSize = JRLC::JsonToString(root).size();
-  std::string payload = "asdasdasd";
-  int payloadSize = payload.size();
-  bodySize = jsonSize + payloadSize;
-  std::shared_ptr<Message> msg(new Message(bodySize,type,jsonSize,payloadSize));
-
-  sendMessage(msg,JRLC::JsonToString(root),payload);
-}
 
 void TCPClient::Init()
 {
