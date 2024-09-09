@@ -14,5 +14,5 @@ ${CMAKE_CURRENT_SOURCE_DIR}/TCP/jrlcClient/Message.cpp
 ${CMAKE_CURRENT_SOURCE_DIR}/TCP/jrlcServer/TCPServer.cpp
 )
 
-target_link_libraries(main ${LIB}/libdata_shared.so ${LIB}/libjsoncpp.so
+target_link_libraries(main ${LIB}/libdata_shared.so ${LIB}/libjsoncpp.so pthread
 )
