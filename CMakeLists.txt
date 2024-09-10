@@ -1,6 +1,20 @@
 cmake_minimum_required(VERSION 3.12)
 project(main)
-set(LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+
+if(DEFINED ARM64)
+message(STATUS "ARM64 is defined")
+set(LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib_arm64)
+
+elseif(DEFINED X86)
+message(STATUS "X86 is defined")
+set(LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib_x86)
+
+else()
+message(STATUS "X86 is defined")
+set(LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib_x86)
+
+endif()
+
 message(${LIB})
 set(CMAKE_CXX_STANDARD 11)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
