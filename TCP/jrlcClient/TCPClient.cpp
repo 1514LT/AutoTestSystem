@@ -137,7 +137,7 @@ void TCPClient::test(Json::Value root)
       std::string strJson;
       int msgType;
       receiveMessage(strJson,msgType);
-      if(strcmp(strJson.c_str(),"null")==0)
+      if(strJson.size() < 20)
       {
         printf("test %ld end\n",ids.asInt64());
         break;
@@ -180,6 +180,9 @@ void TCPClient::test(Json::Value root)
       root_outPut["fileName"] = logFile;
       root_outPut["type"] = 3;
       upTestOutPut(root_outPut,root_outPut["fileName"].asString(),endTimeStr,startTimeStr,usedTime,backSecend,successFrequency,failFrequency,actualTestedNumber);
+      // 删除测试文件
+      std::string cmd_rm = "rm -rf " + logFile;
+      JRLC::getCmd(cmd_rm);
     }
     std::string endTaskTime = JRLC::microsecondsToDateTime(JRLC::getCurrentTimeMicro()); 
     // 返回测试任务执行情况
@@ -465,9 +468,13 @@ void TCPClient::Init()
   if(vt_serial.size()<3)
   {
     perror(cmd_cpu_serial.c_str());
+    root["cpuSerialNumber"] = "";
     return;
   }
-  root["cpuSerialNumber"] = vt_serial[2];
+  else
+  {
+    root["cpuSerialNumber"] = vt_serial[2];
+  }
   std::string os_info = JRLC::getCmd(cmd_cpu_os);
   std::stringstream iss_os(os_info);
   std::vector<std::string> vt_os;
