@@ -31,6 +31,8 @@ CPU_MSG,
 HEARTBEAT_MSG,
 SEND_FILE_MSG = 4,
 DOWNLOAD_FILE_MSG = 5,
+FINISH_TEST_TASK_RECORD = 6,
+ADD_TEST_CASE_RECORDE = 7,
 TESTCASE_MSG = 10
 
 };
@@ -49,9 +51,11 @@ public:
 public:
   int getSocket();
   void sendMessage(const std::shared_ptr<Message>& msg,std::string json_buf,std::string payload);
-  bool receiveMessage(std::string &arg_result,int &msgType);
+  bool receiveMessage(std::string &strJson,int &msgType);
   bool receiveMessage(Json::Value &back);
   std::shared_ptr<Message> InitMsg(char type,std::string json,std::string payload);
+public:
+  std::string extractFileName(const std::string& url);
 public:
   void test(Json::Value root); //执行测试任务
   void Init(); // 获取cpu信息
@@ -59,6 +63,10 @@ public:
   void Run();
   void SendFile(Json::Value root);
   void RecvFile(Json::Value root);
+
+public:
+  void upTestOutPut(Json::Value root,std::string uploadFile,std::string endTimeStr, std::string starTime, long long usedTime,Json::Value rootFirstBack,int& successFrequency,int& failFrequency,int& actualTestedNumber);
+  void addTestCaseRecorde(Json::Value root);
 };
 
 #endif

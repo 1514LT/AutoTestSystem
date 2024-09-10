@@ -58,9 +58,6 @@ public:
   std::vector<std::string> getOutPut();
   void recvLog(int outputPipe[2]);
   void appendToFile(const std::string& filename, const std::string& content);
-  Json::Value getPerfMsg(Json::Value root);
-  void startPer(Json::Value root);
-  void killPerf(Json::Value root);
 };
 
 

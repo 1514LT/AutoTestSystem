@@ -2,7 +2,6 @@
 
 std::string JRLC::getCmd(std::string command)
 {
-    syslog(LOG_INFO, "get command %s",command.c_str());
     FILE* pipe = popen(command.c_str(), "r");
     if (!pipe) {
         syslog(LOG_ERR,"Error executing command.");
@@ -254,7 +253,7 @@ std::string JRLC::microsecondsToDateTime(long long microseconds)
 
   std::stringstream ss;
   ss << std::put_time(gm, "%Y-%m-%d %H:%M:%S"); 
-  ss << '.' << std::setfill('0') << std::setw(6) << micros.count();
+  // ss << '.' << std::setfill('0') << std::setw(6) << micros.count();
 
   return ss.str();
 }

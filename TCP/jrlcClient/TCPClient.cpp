@@ -103,47 +103,156 @@ void TCPClient::Run()
   
 }
 
+
+std::string TCPClient::extractFileName(const std::string& url) {
+    std::size_t lastSlash = url.find_last_of('/');
+    if (lastSlash != std::string::npos) {
+        return url.substr(lastSlash + 1);
+    }
+    return "";
+}
+
 void TCPClient::test(Json::Value root)
 {
   /* to do run test case*/
   std::string msg = JRLC::JsonToString(root);
-  std::cout << "msg:" << msg << std::endl;
   if(root["testTaskIds"].isNull())
     return;
   std::vector<long> TaskIds;
   for(auto ids:root["testTaskIds"])
   {
+    std::string startTaskTime = JRLC::microsecondsToDateTime(JRLC::getCurrentTimeMicro()); 
+    int successFrequency = 0;
+    int failFrequency = 0;
+    int actualTestedNumber = 0;
     TaskIds.push_back(ids.asInt64());
     printf("testTaskId:%ld\n",ids.asInt64());
-    Json::Value back;
-    back["testTaskRecordId"] = ids.asInt64();
-    std::string payload = "";
-    std::shared_ptr<Message> msg = InitMsg(5,JRLC::JsonToString(back),payload);
-    sendMessage(msg,JRLC::JsonToString(back),payload);
-    std::string strJson;
-    int msgType;
-    receiveMessage(strJson,msgType);
-    printf("---->strJson:%s\n",strJson.c_str());
-    back.clear();
-    back =  JRLC::StringToJson(strJson);
-    if(back["testCaseName"].isNull() || back["executionParameters"].isNull() || back["fileUrl"].isNull())
+    while (1)
     {
-      std::cerr << "erro recv" << std::endl;
-      return;
-    }
-    std::string cmd_curl_download = "curl -o " + back["testCaseName"].asString() + " " + back["fileUrl"].asString();
-    JRLC::getCmd(cmd_curl_download);
+      Json::Value back;
+      back["testTaskRecordId"] = ids.asInt64();
+      std::string payload = "";
+      std::shared_ptr<Message> msg = InitMsg(5,JRLC::JsonToString(back),payload);
+      sendMessage(msg,JRLC::JsonToString(back),payload);
+      std::string strJson;
+      int msgType;
+      receiveMessage(strJson,msgType);
+      if(strcmp(strJson.c_str(),"null")==0)
+      {
+        printf("test %ld end\n",ids.asInt64());
+        break;
+      }
+      printf("---->strJson:%s\n",strJson.c_str());
+      Json::Value backSecend;
+      backSecend =  JRLC::StringToJson(strJson);
+      if(backSecend["testCase"]["testCaseName"].isNull() || backSecend["testCase"]["executionParameters"].isNull() || backSecend["testCase"]["fileUrl"].isNull())
+      {
+        std::cerr << "erro recv" << std::endl;
+        return;
+      }
+      // 判断当前目录是否存在测试文件，不存在下载
+      std::string dstName = extractFileName(backSecend["testCase"]["fileUrl"].asString());
+      printf("dstName:%s\n",dstName.c_str());
+      std::ifstream file_test(dstName);
+      if(!file_test.good())
+      {
+        std::string cmd_curl_download = "curl -o " + dstName + " " + backSecend["testCase"]["fileUrl"].asString();
+        std::cout << JRLC::getCmd(cmd_curl_download) << std::endl;
+      }
 
-    // 启动进程执行测试用例
-    
+      // 解压压缩包
+      std::string cmd_tar = "tar -xf " + dstName;
+      std::cout << JRLC::getCmd(cmd_tar) << std::endl;
+      // 启动进程执行测试用例
+      std::string logFile = backSecend["testCase"]["id"].asString() + "_" + std::to_string(JRLC::getCurrentTimeMicro()) + "_result.txt";
+      std::string cmd_exec = backSecend["testCase"]["executionParameters"].asString() + "> " + logFile;
+      long long startTime = JRLC::getCurrentTimeMicro();
+      std::string startTimeStr = JRLC::microsecondsToDateTime(startTime);
+      std::string back_exec = JRLC::getCmd(cmd_exec);
+      std::string strRun = JRLC::read_file_contents("result.txt");
+      std::cout << strRun << std::endl;
+      long long endTime = JRLC::getCurrentTimeMicro();
+      std::string endTimeStr = JRLC::microsecondsToDateTime(endTime);
+      long long usedTime = endTime - startTime;
+      std::string usedTimeStr = JRLC::microsecondsToDateTime(usedTime);
+      // 上传测试输出
+      Json::Value root_outPut;
+      root_outPut["fileName"] = logFile;
+      root_outPut["type"] = 3;
+      upTestOutPut(root_outPut,root_outPut["fileName"].asString(),endTimeStr,startTimeStr,usedTime,backSecend,successFrequency,failFrequency,actualTestedNumber);
+    }
+    std::string endTaskTime = JRLC::microsecondsToDateTime(JRLC::getCurrentTimeMicro()); 
+    // 返回测试任务执行情况
+    Json::Value rootTask;
+    rootTask["endTime"] = endTaskTime;
+    rootTask["startTime"] = startTaskTime;
+    rootTask["successFrequency"] = successFrequency;
+    rootTask["actualTestedNumber"] = actualTestedNumber;
+    rootTask["failFrequency"] = failFrequency;
+    rootTask["testTaskRecordId"] = ids.asInt64();
+    std::string payload = "";
+    std::shared_ptr<Message> msgTask = InitMsg(MSG_TYPE::FINISH_TEST_TASK_RECORD,JRLC::JsonToString(rootTask),payload);
+    sendMessage(msgTask,JRLC::JsonToString(rootTask),payload);
   }
 
-  // up test reasult
+}
 
-  // Json::Value testReasult;
-  // SendFile(testReasult);
-  // Json::Value back;
-  // receiveMessage(back);
+void TCPClient::upTestOutPut(Json::Value root,std::string uploadFile,std::string endTimeStr, std::string startTimeStr, long long usedTime,Json::Value rootFirstBack,int& successFrequency,int& failFrequency,int& actualTestedNumber)
+{
+  std::string payload;
+  std::shared_ptr<Message> msg = InitMsg(MSG_TYPE::SEND_FILE_MSG,JRLC::JsonToString(root),payload);
+  sendMessage(msg,JRLC::JsonToString(root),payload);
+  std::string backJson;
+  int bcakType;
+  receiveMessage(backJson,bcakType);
+  std::cout << "backJson" << backJson << std::endl;
+  Json::Value backRoot = JRLC::StringToJson(backJson);
+
+  std::string cmd_curlT = "curl -X PUT -T " + uploadFile + " \""+ backRoot["uploadUrl"].asString() + "\"";
+  printf("cmd_curlT:%s\n",cmd_curlT.c_str());
+  std::cout << JRLC::getCmd(cmd_curlT) << std::endl;
+
+  // 添加测试用例记录
+  std::stringstream iss(JRLC::getLastLine(JRLC::read_file_contents(root["fileName"].asString())));
+
+  std::string key, value;
+
+  // 读取到分隔符 ':' 之前的部分
+  std::getline(iss, key, ':');
+
+  // 读取到分隔符 ':' 之后的部分
+  std::getline(iss, value);
+  int testResult = 0;
+  if(value == "success")
+  {
+    testResult = 1;
+    successFrequency += 1;
+  }
+  else
+  {
+    testResult = 0;
+    failFrequency += 1;
+  }
+  
+  Json::Value rootAddTestCase;
+  rootAddTestCase["endTime"] = endTimeStr;
+  rootAddTestCase["executionStatus"] = testResult;
+  rootAddTestCase["executionTime"] = uint64_t(usedTime/1000); // 毫秒
+  rootAddTestCase["logFileUrl"] = backRoot["downloadUrl"].asString();
+  rootAddTestCase["singleBoardId"] =rootFirstBack["singleBoardId"].asUInt64();
+  rootAddTestCase["startTime"] = startTimeStr;
+  rootAddTestCase["testCaseId"] = rootFirstBack["testCase"]["id"].asUInt64();
+  rootAddTestCase["testTaskId"] = rootFirstBack["testTaskId"].asUInt64();
+  rootAddTestCase["testTaskRecordId"] = rootFirstBack["testTaskRecordId"].asUInt64();
+  std::shared_ptr<Message> msg2 = InitMsg(MSG_TYPE::ADD_TEST_CASE_RECORDE,JRLC::JsonToString(rootAddTestCase),payload);
+  sendMessage(msg2,JRLC::JsonToString(rootAddTestCase),payload);
+  std::cout << JRLC::JsonToString(rootAddTestCase) << std::endl;
+  actualTestedNumber += 1;
+}
+
+void TCPClient::addTestCaseRecorde(Json::Value root)
+{
+  
 }
 
 void TCPClient::SendFile(Json::Value root)
@@ -262,7 +371,7 @@ int cli_fd = getSocket();
   return true; 
 }
 
-bool TCPClient::receiveMessage(std::string &arg_result,int &msgType)
+bool TCPClient::receiveMessage(std::string &strJson,int &msgType)
 {
   int cli_fd = getSocket();
   unsigned char date_size[4] = "";
@@ -307,7 +416,7 @@ bool TCPClient::receiveMessage(std::string &arg_result,int &msgType)
   }
   printf("json:%s\n",json);
   std::string result = json;
-  arg_result = result;
+  strJson = result;
   char payload[payloadSizes] = "";
   if(payloadSizes > 0)
   {
@@ -402,6 +511,5 @@ void TCPClient::Init()
   std::string back_result = JRLC::JsonToString(root);
   // printf("saveMsg:%s\n",back_result.c_str());
   JRLC::wirte_file_contents(back_result,filePath);
-  sleep(1);
   printf("Init end\n");
 }
